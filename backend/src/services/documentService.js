@@ -1,5 +1,6 @@
 const { randomUUID } = require('node:crypto');
 const repository = require('../repositories/documentRepository');
+const documentStorage = require('../repositories/documentStorage');
 
 function publicDocument(document) {
   const { storedName, ...metadata } = document;
@@ -27,7 +28,7 @@ function findForDownload(id, owner) {
   if (!document || document.owner !== owner) {
     return null;
   }
-  return { path: repository.getFilePath(document), originalName: document.originalName };
+  return { path: documentStorage.getFilePath(document), originalName: document.originalName };
 }
 
 module.exports = { create, list, findForDownload };
