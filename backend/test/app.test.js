@@ -42,6 +42,7 @@ test('upload, listagem e download respeitam os contratos e o dono', async (conte
   const first = await sendFile('conteúdo', 'alice');
   assert.equal(first.response.status, 201);
   assert.deepEqual(Object.keys(first.body).sort(), ['id', 'originalName', 'owner', 'size', 'uploadedAt'].sort());
+  assert.equal(first.body.originalName, 'documento.txt');
   assert.equal(first.body.owner, 'alice');
   assert.equal(first.body.size, Buffer.byteLength('conteúdo'));
   assert.ok(!Number.isNaN(Date.parse(first.body.uploadedAt)));
@@ -56,8 +57,10 @@ test('upload, listagem e download respeitam os contratos e o dono', async (conte
   assert.equal(other.response.status, 201);
   assert.equal(anonymous.body.owner, 'anonymous');
   const list = await fetch(`${baseUrl}/documents`, { headers: { 'X-User-Id': 'alice' } });
+  assert.equal(list.status, 200);
   assert.deepEqual((await list.json()).map((document) => document.id), [second.body.id, first.body.id]);
   const anonymousList = await fetch(`${baseUrl}/documents`);
+  assert.equal(anonymousList.status, 200);
   assert.deepEqual((await anonymousList.json()).map((document) => document.id), [anonymous.body.id]);
 
   const download = await fetch(`${baseUrl}/documents/${first.body.id}/download`, { headers: { 'X-User-Id': 'alice' } });
@@ -73,8 +76,16 @@ test('upload, listagem e download respeitam os contratos e o dono', async (conte
 
   const missing = await fetch(`${baseUrl}/upload`, { method: 'POST', body: new FormData() });
   assert.equal(missing.status, 400);
+  assert.deepEqual(await missing.json(), { error: 'Nenhum arquivo enviado.' });
+  const invalidForm = new FormData();
+  invalidForm.append('unexpected', new Blob(['arquivo']), 'documento.txt');
+  const invalid = await fetch(`${baseUrl}/upload`, { method: 'POST', body: invalidForm });
+  assert.equal(invalid.status, 400);
+  assert.deepEqual(await invalid.json(), { error: 'Upload inválido.' });
   assert.equal((await sendFile('a'.repeat(32))).response.status, 201);
-  assert.equal((await sendFile('a'.repeat(33))).response.status, 413);
+  const oversized = await sendFile('a'.repeat(33));
+  assert.equal(oversized.response.status, 413);
+  assert.deepEqual(oversized.body, { error: 'Arquivo excede o tamanho máximo permitido.' });
   await fs.unlink(repository.getFilePath(stored));
   const missingFile = await fetch(`${baseUrl}/documents/${first.body.id}/download`, { headers: { 'X-User-Id': 'alice' } });
   assert.equal(missingFile.status, 500);
