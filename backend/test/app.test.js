@@ -18,11 +18,12 @@ test('upload, listagem e download respeitam os contratos e o dono', async (conte
   context.after(() => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve())));
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
   const repository = require('../src/repositories/documentRepository');
+  const documentStorage = require('../src/repositories/documentStorage');
   const createdIds = [];
   context.after(async () => {
     for (const id of createdIds) {
       const document = repository.findById(id);
-      await fs.unlink(repository.getFilePath(document)).catch((error) => {
+      await fs.unlink(documentStorage.getFilePath(document)).catch((error) => {
         if (error.code !== 'ENOENT') throw error;
       });
     }
@@ -46,8 +47,8 @@ test('upload, listagem e download respeitam os contratos e o dono', async (conte
   assert.equal(first.body.size, Buffer.byteLength('conteúdo'));
   assert.ok(!Number.isNaN(Date.parse(first.body.uploadedAt)));
   const stored = repository.findById(first.body.id);
-  assert.equal(path.dirname(repository.getFilePath(stored)), path.resolve(__dirname, '../storage'));
-  assert.equal(await fs.readFile(repository.getFilePath(stored), 'utf8'), 'conteúdo');
+  assert.equal(path.dirname(documentStorage.getFilePath(stored)), path.resolve(__dirname, '../storage'));
+  assert.equal(await fs.readFile(documentStorage.getFilePath(stored), 'utf8'), 'conteúdo');
 
   const second = await sendFile('segundo', 'alice');
   const other = await sendFile('outro', 'bob');
@@ -75,7 +76,7 @@ test('upload, listagem e download respeitam os contratos e o dono', async (conte
   assert.equal(missing.status, 400);
   assert.equal((await sendFile('a'.repeat(32))).response.status, 201);
   assert.equal((await sendFile('a'.repeat(33))).response.status, 413);
-  await fs.unlink(repository.getFilePath(stored));
+  await fs.unlink(documentStorage.getFilePath(stored));
   const missingFile = await fetch(`${baseUrl}/documents/${first.body.id}/download`, { headers: { 'X-User-Id': 'alice' } });
   assert.equal(missingFile.status, 500);
   assert.deepEqual(await missingFile.json(), { error: 'Falha ao ler o arquivo.' });

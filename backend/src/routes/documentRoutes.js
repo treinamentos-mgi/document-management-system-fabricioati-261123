@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const controller = require('../controllers/documentController');
-const repository = require('../repositories/documentRepository');
+const documentStorage = require('../repositories/documentStorage');
 
 const maxFileSize = Number(process.env.MAX_FILE_SIZE || 10 * 1024 * 1024);
 if (!Number.isSafeInteger(maxFileSize) || maxFileSize < 1 || maxFileSize === Number.MAX_SAFE_INTEGER) {
@@ -9,7 +9,7 @@ if (!Number.isSafeInteger(maxFileSize) || maxFileSize < 1 || maxFileSize === Num
 }
 
 const router = express.Router();
-const upload = multer({ storage: repository.storage, limits: { fileSize: maxFileSize + 1 } }).single('file');
+const upload = multer({ storage: documentStorage.storage, limits: { fileSize: maxFileSize + 1 } }).single('file');
 
 router.post('/upload', (req, res, next) => {
   upload(req, res, (error) => {
